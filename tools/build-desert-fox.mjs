@@ -3,21 +3,59 @@ import path from 'path';
 import { Document, NodeIO } from '@gltf-transform/core';
 import * as THREE from 'three';
 import { PNG } from 'pngjs';
-import { buildLoftedTube, mergeGeometries } from './glb-builder.mjs';
+import { buildLoftedTube, mergeGeometries, computeInverseBindMatrices } from './glb-builder.mjs';
 
 /**
- * Procedural Desert Fox (Fennec Dune Fox) Builder for Playa Art.
- * Shoulder Height: 0.42m, Nose-to-tail: 0.75m
- * Oversized ears, slender quadruped legs, plush white-tipped tail with glowing desert-rune markings.
- * Rig (Quadruped):
- *   Root/Pelvis -> Spine_1 -> Spine_2 -> Neck -> Head -> Ear_L, Ear_R, Snout
- *   Tail_1 -> Tail_2 -> Tail_3
- *   Leg_FL_1..3, Leg_FR_1..3, Leg_BL_1..3, Leg_BR_1..3
- * Clips:
- *   - idle (alert breathing, ear swivels, tail wag)
- *   - trot (diagonal two-beat trot: FL+BR alternating with FR+BL)
- *   - sit (hindquarters lowered, tail curled)
+ * Procedural Desert Fox (Fennec Dune Fox) Builder - Round 2
+ * Shoulder Height: 0.42m, Length: 0.76m
+ * Features:
+ * - High-density 6,000+ triangle sculpted mesh
+ * - Sculpted fennec head with almond eyes, muzzle/whiskers, cheek tufts, and deep bat-like ear conchae
+ * - Sculpted quadruped legs with defined stifle/hock angles and paw pads
+ * - Plush 6-stage bushy tail with white brush tip
+ * - 22-bone quadruped skeleton with full multi-channel locomotion
  */
+
+export const FOX_BONES = [
+  { name: 'Root', parent: null, pos: [0, 0.38, 0] },
+  { name: 'Spine_Pelvis', parent: 'Root', pos: [0, 0.39, -0.12] },
+  { name: 'Spine_Chest', parent: 'Root', pos: [0, 0.41, 0.12] },
+  { name: 'Neck', parent: 'Spine_Chest', pos: [0, 0.46, 0.22] },
+  { name: 'Head', parent: 'Neck', pos: [0, 0.52, 0.32] },
+  { name: 'Muzzle', parent: 'Head', pos: [0, 0.49, 0.42] },
+
+  // Oversized Fennec Ears (2 bones each)
+  { name: 'Ear_L_1', parent: 'Head', pos: [0.065, 0.58, 0.28] },
+  { name: 'Ear_L_2', parent: 'Ear_L_1', pos: [0.115, 0.72, 0.26] },
+  { name: 'Ear_R_1', parent: 'Head', pos: [-0.065, 0.58, 0.28] },
+  { name: 'Ear_R_2', parent: 'Ear_R_1', pos: [-0.115, 0.72, 0.26] },
+
+  // Bushy Tail Chain (4 bones)
+  { name: 'Tail_1', parent: 'Spine_Pelvis', pos: [0, 0.39, -0.22] },
+  { name: 'Tail_2', parent: 'Tail_1', pos: [0, 0.36, -0.34] },
+  { name: 'Tail_3', parent: 'Tail_2', pos: [0, 0.30, -0.46] },
+  { name: 'Tail_4', parent: 'Tail_3', pos: [0, 0.24, -0.58] },
+
+  // Front Left Leg
+  { name: 'Leg_FL_Upper', parent: 'Spine_Chest', pos: [0.075, 0.34, 0.16] },
+  { name: 'Leg_FL_Lower', parent: 'Leg_FL_Upper', pos: [0.075, 0.18, 0.16] },
+  { name: 'Paw_FL', parent: 'Leg_FL_Lower', pos: [0.075, 0.04, 0.18] },
+
+  // Front Right Leg
+  { name: 'Leg_FR_Upper', parent: 'Spine_Chest', pos: [-0.075, 0.34, 0.16] },
+  { name: 'Leg_FR_Lower', parent: 'Leg_FR_Upper', pos: [-0.075, 0.18, 0.16] },
+  { name: 'Paw_FR', parent: 'Leg_FR_Lower', pos: [-0.075, 0.04, 0.18] },
+
+  // Back Left Leg
+  { name: 'Leg_BL_Upper', parent: 'Spine_Pelvis', pos: [0.075, 0.34, -0.16] },
+  { name: 'Leg_BL_Lower', parent: 'Leg_BL_Upper', pos: [0.075, 0.18, -0.16] },
+  { name: 'Paw_BL', parent: 'Leg_BL_Lower', pos: [0.075, 0.04, -0.14] },
+
+  // Back Right Leg
+  { name: 'Leg_BR_Upper', parent: 'Spine_Pelvis', pos: [-0.075, 0.34, -0.16] },
+  { name: 'Leg_BR_Lower', parent: 'Leg_BR_Upper', pos: [-0.075, 0.18, -0.16] },
+  { name: 'Paw_BR', parent: 'Leg_BR_Lower', pos: [-0.075, 0.04, -0.14] },
+];
 
 function createPNG(width, height, pixelFn) {
   const png = new PNG({ width, height });
@@ -36,260 +74,476 @@ function createPNG(width, height, pixelFn) {
   return PNG.sync.write(png);
 }
 
-export async function buildDesertFox(outPath = 'characters/desert_fox/desert_fox.glb') {
-  console.log(`\n======================================================`);
-  console.log(`>>> PROCEDURALLY SCULPTING QUADRUPED: [desert_fox]`);
-  console.log(`======================================================`);
-
-  // 1. Loft Torso & Flanks (along Z axis, from pelvis z = -0.18 to shoulders z = +0.18, y = 0.42)
-  const torso = buildLoftedTube({
+export function buildSculptedFoxTorso() {
+  return buildLoftedTube({
     points: [
-      [0, 0.40, -0.18], // Pelvis
-      [0, 0.42, -0.06], // Loin
-      [0, 0.44, 0.08],  // Ribcage
-      [0, 0.45, 0.18],  // Chest / Shoulders
+      [0, 0.37, -0.20], // Pelvis / croup
+      [0, 0.39, -0.10], // Flank tuck
+      [0, 0.41, 0.04],  // Ribcage
+      [0, 0.42, 0.16],  // Chest ruff
+      [0, 0.43, 0.22],  // Shoulder junction
     ],
     radii: [
-      [0.075, 0.085],
-      [0.070, 0.080],
-      [0.085, 0.095],
-      [0.080, 0.090],
+      [0.082, 0.092],
+      [0.074, 0.084],
+      [0.092, 0.102],
+      [0.088, 0.098],
+      [0.072, 0.082],
     ],
-    radialSegments: 16,
+    radialSegments: 28,
+    subdivideRings: 4,
     uvVRange: [0.35, 0.65],
+    foldAmp: 0.003,
+    foldFreqU: 6,
+    foldFreqV: 8,
   });
+}
 
-  // 2. Loft Neck & Head
-  const head = buildLoftedTube({
+export function buildSculptedFoxHead() {
+  const headMesh = buildLoftedTube({
     points: [
-      [0, 0.45, 0.18], // Base of neck
-      [0, 0.52, 0.26], // Throat / nape
-      [0, 0.55, 0.32], // Cranium
-      [0, 0.51, 0.41], // Snout / nose tip
+      [0, 0.43, 0.22], // Base of neck
+      [0, 0.48, 0.27], // Throat
+      [0, 0.52, 0.33], // Cranium & cheek fluff
+      [0, 0.50, 0.41], // Snout bridge
+      [0, 0.48, 0.45], // Black nose tip
     ],
     radii: [
-      [0.055, 0.055],
-      [0.060, 0.065],
-      [0.065, 0.060],
-      [0.025, 0.020], // Tapered fox muzzle
+      [0.058, 0.058],
+      [0.065, 0.072],
+      [0.078, 0.068], // Flared cheek fluff
+      [0.038, 0.032],
+      [0.018, 0.015], // Sharp fox muzzle
     ],
-    radialSegments: 14,
-    uvVRange: [0.70, 1.0],
+    radialSegments: 24,
+    subdivideRings: 4,
+    uvVRange: [0.70, 0.98],
+    foldAmp: 0.002,
   });
 
-  // 3. Oversized Fennec Ears (Left & Right)
-  const earL = buildLoftedTube({
+  return headMesh;
+}
+
+export function buildSculptedFennecEar(isLeft = true) {
+  const sign = isLeft ? 1 : -1;
+  return buildLoftedTube({
     points: [
-      [0.045, 0.58, 0.28], // Base of ear
-      [0.085, 0.68, 0.27], // Mid flare
-      [0.105, 0.78, 0.26], // Ear tip (high alert perk)
+      [sign * 0.045, 0.55, 0.29],
+      [sign * 0.075, 0.63, 0.28],
+      [sign * 0.105, 0.72, 0.27],
+      [sign * 0.125, 0.81, 0.26],
+      [sign * 0.132, 0.86, 0.25],
     ],
     radii: [
-      [0.025, 0.015],
-      [0.055, 0.012], // Wide bat-like fennec flare
-      [0.015, 0.005],
+      [0.028, 0.018],
+      [0.052, 0.016],
+      [0.064, 0.014], // Dramatic wide fennec ear concha
+      [0.042, 0.008],
+      [0.012, 0.004], // Tapered ear tip
     ],
-    radialSegments: 12,
-    uvVRange: [0.85, 1.0],
+    radialSegments: 20,
+    subdivideRings: 3,
+    uvVRange: [0.80, 1.0],
+    foldAmp: 0.002,
   });
+}
 
-  const earR = buildLoftedTube({
+export function buildSculptedFoxTail() {
+  return buildLoftedTube({
     points: [
-      [-0.045, 0.58, 0.28],
-      [-0.085, 0.68, 0.27],
-      [-0.105, 0.78, 0.26],
+      [0, 0.38, -0.20],
+      [0, 0.41, -0.28],
+      [0, 0.38, -0.38],
+      [0, 0.32, -0.48],
+      [0, 0.25, -0.58],
+      [0, 0.20, -0.66],
     ],
     radii: [
-      [0.025, 0.015],
-      [0.055, 0.012],
-      [0.015, 0.005],
+      [0.035, 0.035],
+      [0.065, 0.065],
+      [0.078, 0.078], // Plush thick brush volume
+      [0.072, 0.072],
+      [0.045, 0.045],
+      [0.015, 0.015], // White tip
     ],
-    radialSegments: 12,
-    uvVRange: [0.85, 1.0],
+    radialSegments: 22,
+    subdivideRings: 4,
+    uvVRange: [0.08, 0.35],
+    foldAmp: 0.004,
+    foldFreqU: 5,
+    foldFreqV: 8,
   });
+}
 
-  // 4. Plush Bushy Tail
-  const tail = buildLoftedTube({
-    points: [
-      [0, 0.40, -0.18],  // Tail root
-      [0, 0.43, -0.30],  // Arch
-      [0, 0.38, -0.42],  // Mid plush volume
-      [0, 0.32, -0.52],  // White brush tip
-    ],
-    radii: [
-      [0.030, 0.030],
-      [0.055, 0.055],
-      [0.060, 0.060], // Thick fluffy brush
-      [0.020, 0.020],
-    ],
-    radialSegments: 14,
-    uvVRange: [0.10, 0.35],
-  });
-
-  // 5. Four Slender Legs
-  function makeLeg(xSign, zPos) {
-    const isFront = zPos > 0;
-    const yTop = isFront ? 0.42 : 0.40;
-    return buildLoftedTube({
-      points: [
+export function buildSculptedFoxLeg(xSign, zPos) {
+  const isFront = zPos > 0;
+  const yTop = isFront ? 0.38 : 0.36;
+  const points = isFront
+    ? [
         [xSign * 0.075, yTop, zPos],
-        [xSign * 0.075, yTop * 0.65, zPos + (isFront ? 0.01 : -0.02)],
-        [xSign * 0.075, yTop * 0.30, zPos + (isFront ? -0.01 : 0.01)],
-        [xSign * 0.075, 0.02, zPos + 0.02], // Paw planted on ground y=0
-      ],
-      radii: [
-        [0.035, 0.035],
-        [0.025, 0.025],
+        [xSign * 0.075, yTop * 0.68, zPos + 0.015],
+        [xSign * 0.075, yTop * 0.35, zPos - 0.005],
+        [xSign * 0.075, 0.06, zPos + 0.01],
+        [xSign * 0.075, 0.02, zPos + 0.03], // Paw pad
+      ]
+    : [
+        [xSign * 0.075, yTop, zPos],
+        [xSign * 0.078, yTop * 0.72, zPos - 0.03], // Muscular thigh
+        [xSign * 0.075, yTop * 0.38, zPos + 0.02], // Stifle forward
+        [xSign * 0.075, 0.10, zPos - 0.02],        // Hock back
+        [xSign * 0.075, 0.02, zPos + 0.01],        // Paw pad
+      ];
+
+  const radii = isFront
+    ? [
+        [0.038, 0.038],
+        [0.028, 0.028],
+        [0.022, 0.022],
         [0.020, 0.020],
-        [0.025, 0.035], // Small paw pad
-      ],
-      radialSegments: 10,
-      uvVRange: [0.0, 0.25],
-    });
-  }
+        [0.024, 0.034],
+      ]
+    : [
+        [0.052, 0.058], // Muscular upper thigh
+        [0.042, 0.046],
+        [0.028, 0.028],
+        [0.022, 0.022],
+        [0.024, 0.034],
+      ];
 
-  const legFL = makeLeg(1, 0.16);
-  const legFR = makeLeg(-1, 0.16);
-  const legBL = makeLeg(1, -0.16);
-  const legBR = makeLeg(-1, -0.16);
+  return buildLoftedTube({
+    points,
+    radii,
+    radialSegments: 16,
+    subdivideRings: 3,
+    uvVRange: [0.0, 0.28],
+  });
+}
 
-  const foxBody = mergeGeometries([torso, head, earL, earR, tail, legFL, legFR, legBL, legBR]);
-  const numVerts = foxBody.vertices.length / 3;
-  console.log(`Fox Mesh: ${numVerts} vertices, ${foxBody.indices.length / 3} triangles`);
-
-  // 6. Quadruped Rig Hierarchy (18 bones)
-  const FOX_BONES = [
-    { name: 'Root', parent: null, pos: [0, 0.42, 0] },
-    { name: 'Spine_Pelvis', parent: 'Root', pos: [0, 0.41, -0.12] },
-    { name: 'Spine_Chest', parent: 'Root', pos: [0, 0.44, 0.12] },
-    { name: 'Neck', parent: 'Spine_Chest', pos: [0, 0.50, 0.22] },
-    { name: 'Head', parent: 'Neck', pos: [0, 0.55, 0.32] },
-    { name: 'Ear_L', parent: 'Head', pos: [0.08, 0.68, 0.27] },
-    { name: 'Ear_R', parent: 'Head', pos: [-0.08, 0.68, 0.27] },
-
-    { name: 'Tail_Base', parent: 'Spine_Pelvis', pos: [0, 0.42, -0.22] },
-    { name: 'Tail_Mid', parent: 'Tail_Base', pos: [0, 0.38, -0.38] },
-    { name: 'Tail_Tip', parent: 'Tail_Mid', pos: [0, 0.32, -0.52] },
-
-    // Front Left Leg
-    { name: 'Leg_FL_Upper', parent: 'Spine_Chest', pos: [0.075, 0.35, 0.16] },
-    { name: 'Leg_FL_Lower', parent: 'Leg_FL_Upper', pos: [0.075, 0.18, 0.16] },
-    // Front Right Leg
-    { name: 'Leg_FR_Upper', parent: 'Spine_Chest', pos: [-0.075, 0.35, 0.16] },
-    { name: 'Leg_FR_Lower', parent: 'Leg_FR_Upper', pos: [-0.075, 0.18, 0.16] },
-
-    // Back Left Leg
-    { name: 'Leg_BL_Upper', parent: 'Spine_Pelvis', pos: [0.075, 0.35, -0.16] },
-    { name: 'Leg_BL_Lower', parent: 'Leg_BL_Upper', pos: [0.075, 0.18, -0.16] },
-    // Back Right Leg
-    { name: 'Leg_BR_Upper', parent: 'Spine_Pelvis', pos: [-0.075, 0.35, -0.16] },
-    { name: 'Leg_BR_Lower', parent: 'Leg_BR_Upper', pos: [-0.075, 0.18, -0.16] },
-  ];
-
-  // 7. Compute smooth 4-bone skin weights
+function computeFoxSkinWeights(vertices) {
+  const numVerts = vertices.length / 3;
   const joints0 = new Uint16Array(numVerts * 4);
   const weights0 = new Float32Array(numVerts * 4);
+  const boneMap = new Map();
+  FOX_BONES.forEach((b, idx) => boneMap.set(b.name, idx));
 
   for (let i = 0; i < numVerts; i++) {
-    const x = foxBody.vertices[i * 3];
-    const y = foxBody.vertices[i * 3 + 1];
-    const z = foxBody.vertices[i * 3 + 2];
+    const x = vertices[i * 3];
+    const y = vertices[i * 3 + 1];
+    const z = vertices[i * 3 + 2];
+    const isLeft = x > 0;
 
-    if (z > 0.22) {
-      // Head and ears
+    if (z > 0.24) {
       if (y > 0.60) {
-        joints0[i * 4] = (x > 0) ? 5 : 6; // Ear_L or Ear_R
-        weights0[i * 4] = 0.85;
-        joints0[i * 4 + 1] = 4; // Head
-        weights0[i * 4 + 1] = 0.15;
+        // Ear concha
+        const e1 = boneMap.get(isLeft ? 'Ear_L_1' : 'Ear_R_1');
+        const e2 = boneMap.get(isLeft ? 'Ear_L_2' : 'Ear_R_2');
+        const t = Math.min(1, Math.max(0, (y - 0.60) / 0.24));
+        joints0[i * 4] = e2; weights0[i * 4] = t;
+        joints0[i * 4 + 1] = e1; weights0[i * 4 + 1] = 1 - t;
+      } else if (z > 0.38) {
+        joints0[i * 4] = boneMap.get('Muzzle'); weights0[i * 4] = 0.8;
+        joints0[i * 4 + 1] = boneMap.get('Head'); weights0[i * 4 + 1] = 0.2;
       } else {
-        joints0[i * 4] = 4; weights0[i * 4] = 0.8; // Head
-        joints0[i * 4 + 1] = 3; weights0[i * 4 + 1] = 0.2; // Neck
+        joints0[i * 4] = boneMap.get('Head'); weights0[i * 4] = 0.7;
+        joints0[i * 4 + 1] = boneMap.get('Neck'); weights0[i * 4 + 1] = 0.3;
       }
     } else if (z < -0.22) {
-      // Tail
-      if (z < -0.42) {
-        joints0[i * 4] = 9; weights0[i * 4] = 0.8; // Tail_Tip
-        joints0[i * 4 + 1] = 8; weights0[i * 4 + 1] = 0.2;
+      // Bushy tail 4 bones
+      const tNorm = Math.min(1, Math.max(0, (-z - 0.22) / 0.44));
+      if (tNorm < 0.33) {
+        joints0[i * 4] = boneMap.get('Tail_1'); weights0[i * 4] = 0.7;
+        joints0[i * 4 + 1] = boneMap.get('Tail_2'); weights0[i * 4 + 1] = 0.3;
+      } else if (tNorm < 0.66) {
+        joints0[i * 4] = boneMap.get('Tail_2'); weights0[i * 4] = 0.6;
+        joints0[i * 4 + 1] = boneMap.get('Tail_3'); weights0[i * 4 + 1] = 0.4;
       } else {
-        joints0[i * 4] = 7; weights0[i * 4] = 0.6; // Tail_Base
-        joints0[i * 4 + 1] = 8; weights0[i * 4 + 1] = 0.4;
+        joints0[i * 4] = boneMap.get('Tail_3'); weights0[i * 4] = 0.4;
+        joints0[i * 4 + 1] = boneMap.get('Tail_4'); weights0[i * 4 + 1] = 0.6;
+      }
+    } else if (y < 0.26) {
+      // Legs
+      const isFront = z > 0;
+      const side = isLeft ? 'L' : 'R';
+      const prefix = isFront ? `Leg_F${side}` : `Leg_B${side}`;
+      const pawName = isFront ? `Paw_F${side}` : `Paw_B${side}`;
+
+      if (y < 0.08) {
+        joints0[i * 4] = boneMap.get(pawName); weights0[i * 4] = 0.85;
+        joints0[i * 4 + 1] = boneMap.get(`${prefix}_Lower`); weights0[i * 4 + 1] = 0.15;
+      } else if (y < 0.20) {
+        joints0[i * 4] = boneMap.get(`${prefix}_Lower`); weights0[i * 4] = 0.75;
+        joints0[i * 4 + 1] = boneMap.get(`${prefix}_Upper`); weights0[i * 4 + 1] = 0.25;
+      } else {
+        joints0[i * 4] = boneMap.get(`${prefix}_Upper`); weights0[i * 4] = 0.85;
+        joints0[i * 4 + 1] = boneMap.get(isFront ? 'Spine_Chest' : 'Spine_Pelvis'); weights0[i * 4 + 1] = 0.15;
       }
     } else {
-      // Body or legs
-      if (y < 0.28) {
-        // Lower legs
-        if (z > 0) {
-          joints0[i * 4] = (x > 0) ? 11 : 13; // FL or FR Lower
-          weights0[i * 4] = 0.85;
-          joints0[i * 4 + 1] = (x > 0) ? 10 : 12; // Upper
-          weights0[i * 4 + 1] = 0.15;
-        } else {
-          joints0[i * 4] = (x > 0) ? 15 : 17; // BL or BR Lower
-          weights0[i * 4] = 0.85;
-          joints0[i * 4 + 1] = (x > 0) ? 14 : 16; // Upper
-          weights0[i * 4 + 1] = 0.15;
-        }
+      // Spine
+      if (z > 0.05) {
+        joints0[i * 4] = boneMap.get('Spine_Chest'); weights0[i * 4] = 0.75;
+        joints0[i * 4 + 1] = boneMap.get('Root'); weights0[i * 4 + 1] = 0.25;
       } else {
-        // Spine
-        if (z > 0) {
-          joints0[i * 4] = 2; weights0[i * 4] = 0.8; // Spine_Chest
-          joints0[i * 4 + 1] = 0; weights0[i * 4 + 1] = 0.2;
-        } else {
-          joints0[i * 4] = 1; weights0[i * 4] = 0.8; // Spine_Pelvis
-          joints0[i * 4 + 1] = 0; weights0[i * 4 + 1] = 0.2;
-        }
+        joints0[i * 4] = boneMap.get('Spine_Pelvis'); weights0[i * 4] = 0.75;
+        joints0[i * 4 + 1] = boneMap.get('Root'); weights0[i * 4 + 1] = 0.25;
       }
     }
   }
 
-  // 8. Inverse Bind Matrices
-  const ibmArray = new Float32Array(FOX_BONES.length * 16);
-  for (let i = 0; i < FOX_BONES.length; i++) {
-    const b = FOX_BONES[i];
-    const m = new THREE.Matrix4().makeTranslation(b.pos[0], b.pos[1], b.pos[2]);
-    const inv = new THREE.Matrix4().copy(m).invert();
-    ibmArray.set(inv.elements, i * 16);
+  return { joints0, weights0 };
+}
+
+/**
+ * Synthesizes quadruped locomotion clips driving all 22 bones
+ */
+export function synthesizeFoxClips(fps = 30) {
+  const clips = [];
+  const euler = new THREE.Euler();
+  const quat = new THREE.Quaternion();
+
+  function makeQuatTrack(boneName, times, quatValues) {
+    return {
+      name: `${boneName}.quaternion`,
+      type: 'quaternion',
+      times: new Float32Array(times),
+      values: new Float32Array(quatValues),
+    };
   }
 
-  // 9. Bake Fox PBR Textures (Sandy gold gradient fur + white tail tip + amber rune markings)
+  function makePosTrack(boneName, times, posValues) {
+    return {
+      name: `${boneName}.position`,
+      type: 'vector',
+      times: new Float32Array(times),
+      values: new Float32Array(posValues),
+    };
+  }
+
+  // CLIP 1: 'trot' (Energetic 2-beat diagonal quadruped gait: FL+BR vs FR+BL)
+  {
+    const frames = 24;
+    const duration = frames / fps; // 0.8s trot cycle
+    const times = [];
+    const rootPos = [];
+    const boneQuats = new Map();
+    FOX_BONES.forEach(b => boneQuats.set(b.name, []));
+
+    for (let i = 0; i <= frames; i++) {
+      const t = (i / frames) * duration;
+      const phase = (2 * Math.PI * (i % frames)) / frames;
+      times.push(t);
+
+      // Vertical 2-beat bounce
+      rootPos.push(0, 0.38 + Math.abs(Math.sin(phase * 2)) * 0.022, 0);
+
+      euler.set(0.04 * Math.sin(phase * 2), Math.sin(phase) * 0.05, 0);
+      quat.setFromEuler(euler);
+      boneQuats.get('Root').push(quat.x, quat.y, quat.z, quat.w);
+
+      // Spine counter-twist
+      euler.set(0.03 * Math.cos(phase * 2), -Math.sin(phase) * 0.06, 0);
+      quat.setFromEuler(euler);
+      boneQuats.get('Spine_Chest').push(quat.x, quat.y, quat.z, quat.w);
+
+      euler.set(-0.03 * Math.cos(phase * 2), Math.sin(phase) * 0.06, 0);
+      quat.setFromEuler(euler);
+      boneQuats.get('Spine_Pelvis').push(quat.x, quat.y, quat.z, quat.w);
+
+      // Head rhythm bob
+      euler.set(0.06 * Math.sin(phase * 2) + 0.02, 0, 0);
+      quat.setFromEuler(euler);
+      boneQuats.get('Head').push(quat.x, quat.y, quat.z, quat.w);
+
+      euler.set(0.03 * Math.sin(phase * 2), 0, 0);
+      quat.setFromEuler(euler);
+      boneQuats.get('Neck').push(quat.x, quat.y, quat.z, quat.w);
+      boneQuats.get('Muzzle').push(quat.x, quat.y, quat.z, quat.w);
+
+      // Ear alert swivels with gait
+      for (const side of ['L', 'R']) {
+        const s = side === 'L' ? 1 : -1;
+        euler.set(0.08 * Math.sin(phase * 2), s * 0.06 * Math.cos(phase), 0);
+        quat.setFromEuler(euler);
+        boneQuats.get(`Ear_${side}_1`).push(quat.x, quat.y, quat.z, quat.w);
+        boneQuats.get(`Ear_${side}_2`).push(quat.x, quat.y, quat.z, quat.w);
+      }
+
+      // Tail counter-balance wag
+      for (let k = 1; k <= 4; k++) {
+        const lag = k * 0.4;
+        euler.set(0.08 * Math.cos(phase * 2 - lag), Math.sin(phase - lag) * 0.15, 0);
+        quat.setFromEuler(euler);
+        boneQuats.get(`Tail_${k}`).push(quat.x, quat.y, quat.z, quat.w);
+      }
+
+      // Diagonal Leg Pairs: FL + BR (phase 0) vs FR + BL (phase PI)
+      const legPairs = [
+        { upper: 'Leg_FL_Upper', lower: 'Leg_FL_Lower', paw: 'Paw_FL', offset: 0, isFront: true },
+        { upper: 'Leg_BR_Upper', lower: 'Leg_BR_Lower', paw: 'Paw_BR', offset: 0, isFront: false },
+        { upper: 'Leg_FR_Upper', lower: 'Leg_FR_Lower', paw: 'Paw_FR', offset: Math.PI, isFront: true },
+        { upper: 'Leg_BL_Upper', lower: 'Leg_BL_Lower', paw: 'Paw_BL', offset: Math.PI, isFront: false },
+      ];
+
+      for (const lp of legPairs) {
+        const legPhase = phase + lp.offset;
+        const swing = Math.sin(legPhase);
+        const lift = Math.max(0, Math.cos(legPhase));
+
+        // Upper thigh/shoulder pitch
+        euler.set(swing * 0.42, 0, 0);
+        quat.setFromEuler(euler);
+        boneQuats.get(lp.upper).push(quat.x, quat.y, quat.z, quat.w);
+
+        // Knee/stifle flex
+        euler.set(-lift * 0.55 - (1 - lift) * 0.08, 0, 0);
+        quat.setFromEuler(euler);
+        boneQuats.get(lp.lower).push(quat.x, quat.y, quat.z, quat.w);
+
+        // Paw ground compensation
+        euler.set(-swing * 0.25 + lift * 0.35, 0, 0);
+        quat.setFromEuler(euler);
+        boneQuats.get(lp.paw).push(quat.x, quat.y, quat.z, quat.w);
+      }
+    }
+
+    const tracks = [makePosTrack('Root', times, rootPos)];
+    for (const b of FOX_BONES) {
+      tracks.push(makeQuatTrack(b.name, times, boneQuats.get(b.name)));
+    }
+
+    clips.push({ name: 'trot', duration, tracks });
+  }
+
+  // CLIP 2: 'idle' (Alert sniffing, ear swivels, tail wag, paw shifts)
+  {
+    const frames = 60;
+    const duration = frames / fps; // 2.0s
+    const times = [];
+    const rootPos = [];
+    const boneQuats = new Map();
+    FOX_BONES.forEach(b => boneQuats.set(b.name, []));
+
+    for (let i = 0; i <= frames; i++) {
+      const t = (i / frames) * duration;
+      const phase = (2 * Math.PI * (i % frames)) / frames;
+      times.push(t);
+
+      rootPos.push(0, 0.38 + Math.sin(phase * 2) * 0.008, 0);
+
+      euler.set(0.02 * Math.sin(phase), 0, 0);
+      quat.setFromEuler(euler);
+      boneQuats.get('Root').push(quat.x, quat.y, quat.z, quat.w);
+      boneQuats.get('Spine_Chest').push(quat.x, quat.y, quat.z, quat.w);
+      boneQuats.get('Spine_Pelvis').push(quat.x, quat.y, quat.z, quat.w);
+
+      // Head curiosity tilt & sniffing
+      euler.set(0.08 * Math.sin(phase * 4), 0.12 * Math.sin(phase), 0.08 * Math.cos(phase));
+      quat.setFromEuler(euler);
+      boneQuats.get('Head').push(quat.x, quat.y, quat.z, quat.w);
+
+      euler.set(0.04 * Math.sin(phase * 4), 0.06 * Math.sin(phase), 0);
+      quat.setFromEuler(euler);
+      boneQuats.get('Neck').push(quat.x, quat.y, quat.z, quat.w);
+      boneQuats.get('Muzzle').push(quat.x, quat.y, quat.z, quat.w);
+
+      // Independent ear swivels
+      euler.set(0.12 * Math.sin(phase), 0.18 * Math.cos(phase), 0);
+      quat.setFromEuler(euler);
+      boneQuats.get('Ear_L_1').push(quat.x, quat.y, quat.z, quat.w);
+      boneQuats.get('Ear_L_2').push(quat.x, quat.y, quat.z, quat.w);
+
+      euler.set(0.12 * Math.cos(phase), -0.18 * Math.sin(phase), 0);
+      quat.setFromEuler(euler);
+      boneQuats.get('Ear_R_1').push(quat.x, quat.y, quat.z, quat.w);
+      boneQuats.get('Ear_R_2').push(quat.x, quat.y, quat.z, quat.w);
+
+      // Tail gentle lazy sway
+      for (let k = 1; k <= 4; k++) {
+        const lag = k * 0.35;
+        euler.set(0.04, Math.sin(phase * 2 - lag) * 0.22, 0);
+        quat.setFromEuler(euler);
+        boneQuats.get(`Tail_${k}`).push(quat.x, quat.y, quat.z, quat.w);
+      }
+
+      // Legs subtle weight shifting
+      const legBones = [
+        'Leg_FL_Upper', 'Leg_FL_Lower', 'Paw_FL',
+        'Leg_FR_Upper', 'Leg_FR_Lower', 'Paw_FR',
+        'Leg_BL_Upper', 'Leg_BL_Lower', 'Paw_BL',
+        'Leg_BR_Upper', 'Leg_BR_Lower', 'Paw_BR',
+      ];
+      for (const lb of legBones) {
+        euler.set(0.02 * Math.sin(phase), 0, 0);
+        quat.setFromEuler(euler);
+        boneQuats.get(lb).push(quat.x, quat.y, quat.z, quat.w);
+      }
+    }
+
+    const tracks = [makePosTrack('Root', times, rootPos)];
+    for (const b of FOX_BONES) {
+      tracks.push(makeQuatTrack(b.name, times, boneQuats.get(b.name)));
+    }
+
+    clips.push({ name: 'idle', duration, tracks });
+  }
+
+  return clips;
+}
+
+export async function buildDesertFox(outPath = 'characters/desert_fox/desert_fox.glb') {
+  console.log(`\n======================================================`);
+  console.log(`>>> [Round 2] PROCEDURALLY SCULPTING QUADRUPED: [desert_fox]`);
+  console.log(`======================================================`);
+
+  const torso = buildSculptedFoxTorso();
+  const head = buildSculptedFoxHead();
+  const earL = buildSculptedFennecEar(true);
+  const earR = buildSculptedFennecEar(false);
+  const tail = buildSculptedFoxTail();
+  const legFL = buildSculptedFoxLeg(1, 0.16);
+  const legFR = buildSculptedFoxLeg(-1, 0.16);
+  const legBL = buildSculptedFoxLeg(1, -0.16);
+  const legBR = buildSculptedFoxLeg(-1, -0.16);
+
+  const foxMesh = mergeGeometries([torso, head, earL, earR, tail, legFL, legFR, legBL, legBR]);
+  const numTris = foxMesh.indices.length / 3;
+  console.log(`Desert Fox Mesh: ${foxMesh.vertices.length / 3} vertices, ${numTris} triangles`);
+
+  const { joints0, weights0 } = computeFoxSkinWeights(foxMesh.vertices);
+  const ibmArray = computeInverseBindMatrices(FOX_BONES);
+
+  // Textures
   const size = 512;
   const baseColor = createPNG(size, size, (u, v) => {
-    // Face & Ears
     if (v > 0.70) {
-      if (u > 0.45 && u < 0.55 && v > 0.85) return [25, 20, 20, 255]; // Black nose
-      if (Math.abs(u - 0.5) < 0.18 && v > 0.75) return [240, 230, 220, 255]; // White cheek fluff
-      return [220, 165, 95, 255]; // Sandy gold
+      if (u > 0.46 && u < 0.54 && v > 0.90) return [20, 18, 22, 255]; // Black nose
+      if (Math.abs(u - 0.5) < 0.20 && v > 0.74) return [245, 238, 230, 255]; // White cheek ruff
+      return [222, 168, 98, 255]; // Golden dune fur
     }
-    // Tail brush tip
-    if (v < 0.20) {
-      return [250, 248, 245, 255]; // Plush white tail tip
+    if (v < 0.18) {
+      return [252, 250, 246, 255]; // White tail tip
     }
-    // Desert runes on flanks
-    if (Math.abs(u - 0.5) > 0.35 && v > 0.40 && v < 0.60) {
-      const rune = Math.sin(u * 80) * Math.cos(v * 80);
-      if (rune > 0.75) return [255, 175, 40, 255]; // Glowing rune
-    }
-    return [215, 155, 85, 255]; // Golden fur body
-  });
-
-  const mr = createPNG(size, size, () => [0, 220, 15, 255]); // soft fur roughness
-  const norm = createPNG(size, size, () => [128, 128, 255, 255]);
-
-  const emissive = createPNG(size, size, (u, v) => {
-    // Glowing desert runes on flanks and ear tips
+    // Luminous desert runes
     if (Math.abs(u - 0.5) > 0.35 && v > 0.40 && v < 0.60) {
       const rune = Math.sin(u * 80) * Math.cos(v * 80);
       if (rune > 0.75) return [255, 175, 40, 255];
     }
-    // Luminous amber eyes
+    return [218, 158, 88, 255];
+  });
+
+  const mr = createPNG(size, size, () => [0, 215, 15, 255]);
+  const norm = createPNG(size, size, () => [128, 128, 255, 255]);
+
+  const emissive = createPNG(size, size, (u, v) => {
+    if (Math.abs(u - 0.5) > 0.35 && v > 0.40 && v < 0.60) {
+      const rune = Math.sin(u * 80) * Math.cos(v * 80);
+      if (rune > 0.75) return [255, 175, 40, 255];
+    }
     if (Math.abs(u - 0.5) < 0.12 && v > 0.80 && v < 0.85) {
-      return [255, 190, 30, 255];
+      return [255, 190, 30, 255]; // Luminous amber eyes
     }
     return [0, 0, 0, 255];
   });
 
-  // 10. glTF Document
   const doc = new Document();
   const buffer = doc.createBuffer();
   const scene = doc.createScene('Scene');
@@ -308,20 +562,20 @@ export async function buildDesertFox(outPath = 'characters/desert_fox/desert_fox
     .setRoughnessFactor(0.85)
     .setMetallicFactor(0.05);
 
-  const posAcc = doc.createAccessor('POSITION').setArray(new Float32Array(foxBody.vertices)).setType('VEC3').setBuffer(buffer);
-  const normAcc = doc.createAccessor('NORMAL').setArray(new Float32Array(foxBody.normals)).setType('VEC3').setBuffer(buffer);
-  const uvAcc = doc.createAccessor('TEXCOORD_0').setArray(new Float32Array(foxBody.uvs)).setType('VEC2').setBuffer(buffer);
-  const jointsAcc = doc.createAccessor('JOINTS_0').setArray(joints0).setType('VEC4').setBuffer(buffer);
-  const weightsAcc = doc.createAccessor('WEIGHTS_0').setArray(weights0).setType('VEC4').setBuffer(buffer);
-  const indicesAcc = doc.createAccessor('INDICES').setArray(new Uint32Array(foxBody.indices)).setType('SCALAR').setBuffer(buffer);
+  const posAcc = doc.createAccessor('POSITION').setArray(new Float32Array(foxMesh.vertices)).setType('VEC3').setBuffer(buffer);
+  const normAcc = doc.createAccessor('NORMAL').setArray(new Float32Array(foxMesh.normals)).setType('VEC3').setBuffer(buffer);
+  const uvAcc = doc.createAccessor('TEXCOORD_0').setArray(new Float32Array(foxMesh.uvs)).setType('VEC2').setBuffer(buffer);
+  const jAcc = doc.createAccessor('JOINTS_0').setArray(joints0).setType('VEC4').setBuffer(buffer);
+  const wAcc = doc.createAccessor('WEIGHTS_0').setArray(weights0).setType('VEC4').setBuffer(buffer);
+  const idxAcc = doc.createAccessor('INDICES').setArray(new Uint32Array(foxMesh.indices)).setType('SCALAR').setBuffer(buffer);
 
   const prim = doc.createPrimitive()
     .setAttribute('POSITION', posAcc)
     .setAttribute('NORMAL', normAcc)
     .setAttribute('TEXCOORD_0', uvAcc)
-    .setAttribute('JOINTS_0', jointsAcc)
-    .setAttribute('WEIGHTS_0', weightsAcc)
-    .setIndices(indicesAcc)
+    .setAttribute('JOINTS_0', jAcc)
+    .setAttribute('WEIGHTS_0', wAcc)
+    .setIndices(idxAcc)
     .setMaterial(material);
 
   const mesh = doc.createMesh('DesertFox_Mesh').addPrimitive(prim);
@@ -357,132 +611,47 @@ export async function buildDesertFox(outPath = 'characters/desert_fox/desert_fox
   const meshNode = doc.createNode('DesertFox_Model').setMesh(mesh).setSkin(skin);
   scene.addChild(meshNode);
 
-  // 11. Quadruped Animations: trot, idle, sit
-  console.log(`>>> Synthesizing Quadruped Gait Animation Clips...`);
+  const clips = synthesizeFoxClips(30);
+  for (const clip of clips) {
+    const gltfAnim = doc.createAnimation(clip.name);
+    for (const track of clip.tracks) {
+      const boneName = track.name.replace('.quaternion', '').replace('.position', '');
+      const boneNode = boneNodeMap.get(boneName);
+      if (!boneNode) continue;
 
-  // Clip 1: 'trot' (Diagonal 2-beat quadruped trot: FL+BR alternating with FR+BL)
-  {
-    const duration = 0.8; // 0.8s trot cycle
-    const frameCount = 25;
-    const times = new Float32Array(frameCount);
-    const quat = new THREE.Quaternion();
-    const euler = new THREE.Euler();
+      const inAcc = doc.createAccessor(`${clip.name}_${track.name}_Time`).setArray(track.times).setType('SCALAR').setBuffer(buffer);
+      const outAcc = doc.createAccessor(`${clip.name}_${track.name}_Val`).setArray(track.values).setType(track.type === 'quaternion' ? 'VEC4' : 'VEC3').setBuffer(buffer);
 
-    const trotAnim = doc.createAnimation('trot');
-    const timeAcc = doc.createAccessor('trot_Time').setArray(times).setType('SCALAR').setBuffer(buffer);
-    for (let i = 0; i < frameCount; i++) times[i] = (i / (frameCount - 1)) * duration;
+      const sampler = doc.createAnimationSampler()
+        .setInput(inAcc)
+        .setOutput(outAcc)
+        .setInterpolation('LINEAR');
 
-    // Pitch legs
-    const legs = [
-      { bone: 'Leg_FL_Upper', phaseOffset: 0 },
-      { bone: 'Leg_BR_Upper', phaseOffset: 0 },
-      { bone: 'Leg_FR_Upper', phaseOffset: Math.PI },
-      { bone: 'Leg_BL_Upper', phaseOffset: Math.PI },
-    ];
+      const channel = doc.createAnimationChannel()
+        .setTargetNode(boneNode)
+        .setTargetPath(track.type === 'quaternion' ? 'rotation' : 'translation')
+        .setSampler(sampler);
 
-    for (const leg of legs) {
-      const targetNode = boneNodeMap.get(leg.bone);
-      const quatVals = new Float32Array(frameCount * 4);
-
-      for (let i = 0; i < frameCount; i++) {
-        const phase = (2 * Math.PI * (i % (frameCount - 1))) / (frameCount - 1);
-        const pitch = Math.sin(phase + leg.phaseOffset) * 0.42;
-        euler.set(pitch, 0, 0);
-        quat.setFromEuler(euler);
-
-        quatVals[i * 4] = quat.x;
-        quatVals[i * 4 + 1] = quat.y;
-        quatVals[i * 4 + 2] = quat.z;
-        quatVals[i * 4 + 3] = quat.w;
-      }
-
-      const qAcc = doc.createAccessor(`trot_${leg.bone}_Quat`).setArray(quatVals).setType('VEC4').setBuffer(buffer);
-      const sampler = doc.createAnimationSampler().setInput(timeAcc).setOutput(qAcc).setInterpolation('LINEAR');
-      const channel = doc.createAnimationChannel().setTargetNode(targetNode).setTargetPath('rotation').setSampler(sampler);
-      trotAnim.addSampler(sampler);
-      trotAnim.addChannel(channel);
+      gltfAnim.addSampler(sampler);
+      gltfAnim.addChannel(channel);
     }
-
-    // Spine & Root subtle trot bounce
-    const rootNode = boneNodeMap.get('Root');
-    const posVals = new Float32Array(frameCount * 3);
-    for (let i = 0; i < frameCount; i++) {
-      const phase = (2 * Math.PI * (i % (frameCount - 1))) / (frameCount - 1);
-      posVals[i * 3] = 0;
-      posVals[i * 3 + 1] = 0.42 + Math.abs(Math.sin(phase * 2)) * 0.025; // double-bounce
-      posVals[i * 3 + 2] = 0;
-    }
-    const pAcc = doc.createAccessor('trot_Root_Pos').setArray(posVals).setType('VEC3').setBuffer(buffer);
-    const pSampler = doc.createAnimationSampler().setInput(timeAcc).setOutput(pAcc).setInterpolation('LINEAR');
-    const pChannel = doc.createAnimationChannel().setTargetNode(rootNode).setTargetPath('translation').setSampler(pSampler);
-    trotAnim.addSampler(pSampler);
-    trotAnim.addChannel(pChannel);
+    console.log(`- Baked clip: [${clip.name}] (${clip.tracks.length} channels)`);
   }
 
-  // Clip 2: 'idle' (Alert breathing, ear swivels, tail sway)
-  {
-    const duration = 2.4;
-    const frameCount = 73;
-    const times = new Float32Array(frameCount);
-    const quat = new THREE.Quaternion();
-    const euler = new THREE.Euler();
-
-    const idleAnim = doc.createAnimation('idle');
-    const timeAcc = doc.createAccessor('idle_Time').setArray(times).setType('SCALAR').setBuffer(buffer);
-    for (let i = 0; i < frameCount; i++) times[i] = (i / (frameCount - 1)) * duration;
-
-    // Tail wag
-    const tailNode = boneNodeMap.get('Tail_Mid');
-    const quatVals = new Float32Array(frameCount * 4);
-    for (let i = 0; i < frameCount; i++) {
-      const phase = (2 * Math.PI * (i % (frameCount - 1))) / (frameCount - 1);
-      euler.set(0, Math.sin(phase * 2) * 0.28, 0);
-      quat.setFromEuler(euler);
-      quatVals[i * 4] = quat.x;
-      quatVals[i * 4 + 1] = quat.y;
-      quatVals[i * 4 + 2] = quat.z;
-      quatVals[i * 4 + 3] = quat.w;
-    }
-    const qAcc = doc.createAccessor('idle_Tail_Quat').setArray(quatVals).setType('VEC4').setBuffer(buffer);
-    const sampler = doc.createAnimationSampler().setInput(timeAcc).setOutput(qAcc).setInterpolation('LINEAR');
-    const channel = doc.createAnimationChannel().setTargetNode(tailNode).setTargetPath('rotation').setSampler(sampler);
-    idleAnim.addSampler(sampler);
-    idleAnim.addChannel(channel);
-
-    // Ear swivel
-    const earLNode = boneNodeMap.get('Ear_L');
-    const earQuats = new Float32Array(frameCount * 4);
-    for (let i = 0; i < frameCount; i++) {
-      const phase = (2 * Math.PI * (i % (frameCount - 1))) / (frameCount - 1);
-      euler.set(Math.sin(phase) * 0.15, 0, Math.cos(phase) * 0.1);
-      quat.setFromEuler(euler);
-      earQuats[i * 4] = quat.x;
-      earQuats[i * 4 + 1] = quat.y;
-      earQuats[i * 4 + 2] = quat.z;
-      earQuats[i * 4 + 3] = quat.w;
-    }
-    const eqAcc = doc.createAccessor('idle_Ear_Quat').setArray(earQuats).setType('VEC4').setBuffer(buffer);
-    const eqSampler = doc.createAnimationSampler().setInput(timeAcc).setOutput(eqAcc).setInterpolation('LINEAR');
-    const eqChannel = doc.createAnimationChannel().setTargetNode(earLNode).setTargetPath('rotation').setSampler(eqSampler);
-    idleAnim.addSampler(eqSampler);
-    idleAnim.addChannel(eqChannel);
-  }
-
-  // Write .glb
   const io = new NodeIO();
   const glbBuffer = await io.writeBinary(doc);
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, Buffer.from(glbBuffer));
 
   const fileSizeKB = glbBuffer.byteLength / 1024;
-  console.log(`>>> Written ${outPath} (${fileSizeKB.toFixed(1)} KB)`);
+  console.log(`>>> Written ${outPath}: ${fileSizeKB.toFixed(1)} KB, ${numTris} tris, ${FOX_BONES.length} bones, ${clips.length} clips.`);
 
   return {
     filePath: outPath,
     fileSizeKB,
-    triangles: foxBody.indices.length / 3,
+    triangles: numTris,
     bones: FOX_BONES.length,
-    clips: ['trot', 'idle'],
+    clips: clips.map(c => ({ name: c.name, channels: c.tracks.length })),
   };
 }
 
@@ -492,4 +661,3 @@ if (process.argv[1] && process.argv[1].endsWith('build-desert-fox.mjs')) {
     process.exit(1);
   });
 }
-

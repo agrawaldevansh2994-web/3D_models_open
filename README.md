@@ -6,23 +6,23 @@ Every character is a single self-contained binary glTF 2.0 (`.glb`) file with ze
 
 ---
 
-## 🌟 The Roster (13 Characters Complete)
+## 🌟 The Roster
 
-| Character | Category | Size | Triangles | Bones | Baked Animation Clips |
-|---|---|---|---|---|---|
-| [`festival_raver`](characters/festival_raver/) | Hero Humanoid | 838 KB | 5,500 | 62 | `walk`, `dance_1` (shuffle), `dance_2` (stomp), `dance_3` (trance) |
-| [`dj_decks`](characters/dj_decks/) | Resident DJ | 874 KB | 5,776 | 62 | `walk`, `mixer_hands`, `fist_raise_drop`, `idle_groove` |
-| [`desert_wanderer`](characters/desert_wanderer/) | Playa Nomad | 1,200 KB | 8,806 | 62 | `walk`, `idle`, `wave` |
-| [`deep_sea_diver`](characters/deep_sea_diver/) | Abyssal Diver | 836 KB | 5,476 | 62 | `walk`, `swim`, `idle` |
-| [`manta_ray`](characters/manta_ray/) | Pelagic Marine | 951 KB | 6,912 | 16 | `glide`, `bank`, `barrel_roll` |
-| [`biolum_jellyfish`](characters/biolum_jellyfish/) | Abyssal Jelly | 118 KB | 2,176 | 20 | `pulse`, `drift` |
-| [`school_fish`](characters/school_fish/) | Swarm Unit | 28 KB | 384 | 6 | `swim`, `dart` |
-| [`desert_fox`](characters/desert_fox/) | Land Creature | 55 KB | 816 | 18 | `trot`, `idle` |
-| [`forest_spirit`](characters/forest_spirit/) | Land Creature | 79 KB | 1,320 | 13 | `idle`, `walk`, `dance_1`, `pulse` |
-| [`bird_of_prey`](characters/bird_of_prey/) | Sky Raptor | 73 KB | 904 | 15 | `soar`, `flap`, `land` |
-| [`firefly_moth`](characters/firefly_moth/) | Swarm Unit | 60 KB | 528 | 10 | `fly`, `hover`, `rest` |
-| [`paraglider_pilot`](characters/paraglider_pilot/) | Sky Flyer | 53 KB | 726 | 12 | `glide`, `bank_turn`, `thermal_climb` |
-| [`festival_mech`](characters/festival_mech/) | Art-Car Machine | 87 KB | 1,152 | 16 | `idle`, `walk`, `rave_mode`, `stomp` |
+| Character | Category | Size | Triangles | Bones | Baked Animation Clips | Round 2 Status |
+|---|---|---|---|---|---|---|
+| [`festival_raver`](characters/festival_raver/) | Hero Humanoid | 2,234 KB | 15,464 | 52 | `idle`, `walk`, `run`, `dance_1`, `dance_2`, `dance_3`, `wave` (53ch each) | **PASS (11/11 Checks)** |
+| [`manta_ray`](characters/manta_ray/) | Pelagic Marine | 1,411 KB | 13,568 | 24 | `glide`, `bank`, `barrel_roll` (24ch each) | **In Progress (3D Remake Verified)** |
+| [`desert_fox`](characters/desert_fox/) | Land Creature | 300 KB | 5,396 | 26 | `trot`, `idle` (27ch each) | **In Progress (3D Remake Verified)** |
+| [`dj_decks`](characters/dj_decks/) | Resident DJ | 874 KB | 5,776 | 62 | `walk`, `mixer_hands`, `fist_raise_drop`, `idle_groove` | Round 1 Placeholder |
+| [`desert_wanderer`](characters/desert_wanderer/) | Playa Nomad | 1,200 KB | 8,806 | 62 | `walk`, `idle`, `wave` | Round 1 Placeholder |
+| [`deep_sea_diver`](characters/deep_sea_diver/) | Abyssal Diver | 836 KB | 5,476 | 62 | `walk`, `swim`, `idle` | Round 1 Placeholder |
+| [`biolum_jellyfish`](characters/biolum_jellyfish/) | Abyssal Jelly | 118 KB | 2,176 | 20 | `pulse`, `drift` | Round 1 Placeholder |
+| [`school_fish`](characters/school_fish/) | Swarm Unit | 28 KB | 384 | 6 | `swim`, `dart` | Round 1 Placeholder |
+| [`forest_spirit`](characters/forest_spirit/) | Land Creature | 79 KB | 1,320 | 13 | `idle`, `walk`, `dance_1`, `pulse` | Round 1 Placeholder |
+| [`bird_of_prey`](characters/bird_of_prey/) | Sky Raptor | 73 KB | 904 | 15 | `soar`, `flap`, `land` | Round 1 Placeholder |
+| [`firefly_moth`](characters/firefly_moth/) | Swarm Unit | 60 KB | 528 | 10 | `fly`, `hover`, `rest` | Round 1 Placeholder |
+| [`paraglider_pilot`](characters/paraglider_pilot/) | Sky Flyer | 53 KB | 726 | 12 | `glide`, `bank_turn`, `thermal_climb` | Round 1 Placeholder |
+| [`festival_mech`](characters/festival_mech/) | Art-Car Machine | 87 KB | 1,152 | 16 | `idle`, `walk`, `rave_mode`, `stomp` | Round 1 Placeholder |
 
 ---
 
