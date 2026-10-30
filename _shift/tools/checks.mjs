@@ -7,7 +7,7 @@
 //
 // Needs ffmpeg + ffprobe on PATH. Prints JSON. Exit code 0 = pass, 1 = fail.
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -113,7 +113,11 @@ if (has('commit')) {
     const line = { file: out.file, job: opt('job', kind), world: opt('world', ''), source: opt('source', ''), ai_generated: opt('ai', 'false') === 'true',
       specs: out.specs, checks: Object.fromEntries(Object.entries(checks).map(([k, v]) => [k, v])), ...(ssimLoop != null ? { loop_ssim: ssimLoop } : {}),
       looked_at: looked, date: new Date().toISOString().slice(0, 10) };
-    appendFileSync(join(shift, 'manifest.jsonl'), JSON.stringify(line) + '\n');
+    const mPath = join(shift, 'manifest.jsonl');
+    const existing = existsSync(mPath) ? readFileSync(mPath, 'utf8').split('\n').filter((l) => l.trim().length > 0) : [];
+    const filtered = existing.filter((l) => { try { return JSON.parse(l).file !== out.file; } catch { return true; } });
+    filtered.push(JSON.stringify(line));
+    writeFileSync(mPath, filtered.join('\n') + '\n');
     console.log('\nCOMMITTED to manifest.jsonl');
   } else {
     const dest = join(root, '_rejected', basename(file, extname(file))); mkdirSync(dest, { recursive: true });

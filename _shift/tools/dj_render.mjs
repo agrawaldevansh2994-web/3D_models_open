@@ -1,4 +1,4 @@
-﻿// DJ Loop Renderer: 3D character (dj_decks.glb) + procedural DJ booth -> headless Three.js -> ffmpeg (MP4 + WebM).
+// DJ Loop Renderer: 3D character (dj_decks.glb) + procedural DJ booth -> headless Three.js -> ffmpeg (MP4 + WebM).
 // Seamless circular timeline by construction: frame N mathematically matches frame 0.
 
 import { spawn } from 'node:child_process';
@@ -225,7 +225,7 @@ function getHtml() {
     logoMesh.position.set(0, 0.52, 0.66);
     boothGroup.add(logoMesh);
 
-    // CDJ Players
+    // CDJ-style Decks
     const cdjMat = new THREE.MeshStandardMaterial({ color: 0x161822, roughness: 0.35, metalness: 0.85 });
     const platterMat = new THREE.MeshStandardMaterial({ color: 0x222632, roughness: 0.25, metalness: 0.95 });
     const jogCenterMat = new THREE.MeshBasicMaterial({ color: 0x00d4ff });

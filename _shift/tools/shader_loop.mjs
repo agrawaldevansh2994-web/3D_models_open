@@ -36,8 +36,11 @@ const preludeLines = prelude.split('\n').length;
 
 const glArgs = (flag('gl', 'angle') === 'swiftshader')
   ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
-  : ['--use-gl=angle', '--use-angle=d3d11'];
-const browser = await chromium.launch({ headless: true, args: ['--ignore-gpu-blocklist', '--enable-webgl', ...glArgs] });
+  : ['--use-gl=angle', '--use-angle=d3d11', '--disable-gpu-watchdog'];
+const browser = await chromium.launch({
+  headless: true,
+  args: ['--ignore-gpu-blocklist', '--enable-webgl', '--disable-gpu-watchdog', '--js-flags=--max-old-space-size=4096', ...glArgs]
+});
 
 try {
   for (const v of list) {
@@ -45,6 +48,7 @@ try {
     const W = test ? 640 : 1920, H = test ? 360 : 1080, FPS = 30;
     const secs = test ? 1 : v.seconds, N = Math.round(secs * FPS);
     const page = await browser.newPage({ viewport: { width: W, height: H } });
+    page.setDefaultTimeout(0);
     page.on('pageerror', (e) => console.error('[page error]', e.message));
     await page.setContent(`<body style="margin:0;background:#000"><canvas id=c width=${W} height=${H}></canvas></body>`);
     const info = await page.evaluate(({ fsrc, W, H }) => {
@@ -91,9 +95,9 @@ try {
     }
     const dir = join(root, 'vj_loops', theme); mkdirSync(dir, { recursive: true });
     outBase = join(dir, v.name);
-    const mbps = (7.0 * 8) / secs; // keep each file under ~7.5 MB (spec is <= 8 MB)
+    const mbps = (7.2 * 8) / secs; // keep each file under ~7.6 MB (spec is <= 8 MB)
     ff = spawn('ffmpeg', ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-i', '-',
-      '-map', '0:v', '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', '20', '-maxrate', mbps.toFixed(2) + 'M', '-bufsize', (mbps * 2).toFixed(2) + 'M', '-preset', 'slow', '-movflags', '+faststart', outBase + '.mp4',
+      '-map', '0:v', '-c:v', 'libx264', '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-crf', '17', '-maxrate', mbps.toFixed(2) + 'M', '-bufsize', (mbps * 2).toFixed(2) + 'M', '-preset', 'slow', '-movflags', '+faststart', outBase + '.mp4',
       '-map', '0:v', '-c:v', 'libvpx-vp9', '-pix_fmt', 'yuv420p', '-crf', '33', '-b:v', mbps.toFixed(2) + 'M', '-row-mt', '1', '-deadline', 'good', '-cpu-used', '2', outBase + '.webm'],
       { stdio: ['pipe', 'inherit', 'inherit'] });
     ff.stdin.on('error', () => {}); // ffmpeg died: the exit code below reports it
