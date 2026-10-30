@@ -1,0 +1,31 @@
+{
+  "dj_groove": {
+    "name": "dj_groove",
+    "description": "DJ grooving, nodding head to beat with headphone cueing and transitioning to working the mixer faders and CDJ platters.",
+    "seconds": 10.0,
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "character": "3D models/characters/dj_decks/dj_decks.glb",
+    "timeline": "circular 2-way blend: idle_groove (headphones/nod) <-> mixer_hands (faders/platters)",
+    "outputs": {
+      "club": "ai_dj/dj_groove_club.mp4",
+      "green": "ai_dj/dj_groove_green.mp4"
+    }
+  },
+  "dj_drop": {
+    "name": "dj_drop",
+    "description": "Festival build-up on mixer EQ/filters, explosive right-arm fist pump and hype on the bass drop, transitioning back into rhythm groove.",
+    "seconds": 10.0,
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "character": "3D models/characters/dj_decks/dj_decks.glb",
+    "timeline": "circular 3-way blend: mixer_hands (build) -> fist_raise_drop (drop/hype) -> idle_groove (groove)",
+    "outputs": {
+      "club": "ai_dj/dj_drop_club.mp4",
+      "green": "ai_dj/dj_drop_green.mp4"
+    }
+  }
+}
+

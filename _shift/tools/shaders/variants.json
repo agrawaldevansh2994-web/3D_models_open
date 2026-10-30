@@ -1,0 +1,57 @@
+{
+  "lasers": {
+    "world": "Laser Forest / Forest Rave", "shader": "tunnel_lasers.frag",
+    "variants": [
+      { "name": "lasers_01_twelve_fan", "seconds": 12, "seed": 1, "hue": 0.85, "p": [12, 2, 1, 1.0] },
+      { "name": "lasers_02_dense_fan",    "seconds": 15, "seed": 2, "hue": 0.30, "p": [24, 3, 1, 0.6] },
+      { "name": "lasers_03_wide_beams",     "seconds": 12, "seed": 3, "hue": 0.00, "p": [8, 2, 2, 1.4] },
+      { "name": "lasers_04_thirtytwo_rays",     "seconds": 16, "seed": 4, "hue": 0.62, "p": [32, 4, 1, 0.8] },
+      { "name": "lasers_05_slow_sixteen",    "seconds": 20, "seed": 5, "hue": 0.10, "p": [16, 1, 1, 1.2] },
+      { "name": "lasers_06_twin_spin",    "seconds": 14, "seed": 6, "hue": 0.45, "p": [20, 3, 2, 1.0] }
+    ]
+  },
+  "goa95": {
+    "world": "Goa Trance", "shader": "goa_fractal.frag",
+    "variants": [
+      { "name": "goa_01_mandala_8",   "seconds": 15, "seed": 1, "hue": 0.78, "p": [8, 8, 0.10, 1.6] },
+      { "name": "goa_02_mandala_6",   "seconds": 12, "seed": 2, "hue": 0.30, "p": [6, 7, 0.14, 1.8] },
+      { "name": "goa_03_mandala_10",  "seconds": 18, "seed": 3, "hue": 0.05, "p": [10, 9, 0.08, 1.5] },
+      { "name": "goa_04_mandala_12",    "seconds": 16, "seed": 4, "hue": 0.90, "p": [12, 8, 0.12, 1.7] },
+      { "name": "goa_05_mandala_5",   "seconds": 14, "seed": 5, "hue": 0.55, "p": [5, 10, 0.09, 1.4] },
+      { "name": "goa_06_mandala_16",   "seconds": 20, "seed": 6, "hue": 0.12, "p": [16, 7, 0.11, 1.9] }
+    ]
+  },
+  "panopticon": {
+    "world": "Panopticon (strobe / industrial)", "shader": "panopticon_strobe.frag",
+    "variants": [
+      { "name": "pan_01_hazard_rings",  "seconds": 12, "seed": 1, "hue": 0.0, "p": [6, 24, 1, 12] },
+      { "name": "pan_02_radar_sweep",   "seconds": 16, "seed": 2, "hue": 0.3, "p": [5, 16, 2, 8] },
+      { "name": "pan_03_tight_stripes", "seconds": 12, "seed": 3, "hue": 0.6, "p": [8, 40, 1, 20] },
+      { "name": "pan_04_slow_tiers",    "seconds": 20, "seed": 4, "hue": 0.1, "p": [5, 12, 1, 10] },
+      { "name": "pan_05_double_sweep",  "seconds": 14, "seed": 5, "hue": 0.2, "p": [7, 20, 3, 14] },
+      { "name": "pan_06_amber_pulse",   "seconds": 15, "seed": 6, "hue": 1.0, "p": [4, 32, 2, 30] }
+    ]
+  },
+  "pyramids": {
+    "world": "Pyramids at Night", "shader": "pyramids_gold.frag",
+    "variants": [
+      { "name": "pyr_01_gold_columns",  "seconds": 15, "seed": 1, "hue": 0.0, "p": [8, 1, 8, 0.9] },
+      { "name": "pyr_02_wide_glyphs",   "seconds": 12, "seed": 2, "hue": 0.2, "p": [5, 1, 6, 0.8] },
+      { "name": "pyr_03_dense_script",  "seconds": 18, "seed": 3, "hue": 0.1, "p": [12, 2, 12, 0.9] },
+      { "name": "pyr_04_ember_rain",    "seconds": 14, "seed": 4, "hue": 0.7, "p": [9, 2, 9, 0.85] },
+      { "name": "pyr_05_slow_temple",   "seconds": 20, "seed": 5, "hue": 0.0, "p": [6, 1, 7, 0.9] },
+      { "name": "pyr_06_pulse_grid",    "seconds": 16, "seed": 6, "hue": 0.4, "p": [10, 3, 10, 0.9] }
+    ]
+  },
+  "bay": {
+    "world": "Bioluminescence Bay", "shader": "bay_caustics.frag",
+    "variants": [
+      { "name": "bay_01_cyan_net",      "seconds": 15, "seed": 1, "hue": 0.0, "p": [2.6, 0.35, 1.0, 2] },
+      { "name": "bay_02_deep_violet",   "seconds": 18, "seed": 2, "hue": 0.8, "p": [3.2, 0.40, 0.6, 2] },
+      { "name": "bay_03_green_tide",    "seconds": 12, "seed": 3, "hue": -0.6, "p": [2.2, 0.30, 1.2, 1] },
+      { "name": "bay_04_fine_caustics", "seconds": 16, "seed": 4, "hue": 0.2, "p": [4.2, 0.45, 0.8, 2] },
+      { "name": "bay_05_slow_swell",    "seconds": 20, "seed": 5, "hue": 0.4, "p": [1.8, 0.55, 0.5, 2] },
+      { "name": "bay_06_sparkle_storm", "seconds": 14, "seed": 6, "hue": 0.1, "p": [2.8, 0.35, 2.0, 1] }
+    ]
+  }
+}
