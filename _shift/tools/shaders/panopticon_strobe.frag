@@ -1,5 +1,6 @@
 // Strobe / industrial black, orange and white only (Panopticon).
-// Strictly <= 2 pulses/sec (photosensitivity safe, localized strobes, never full-screen white flash).
+// Strobe rate is capped by Pn <= 16 pulses per loop (<= ~1.4/s for these loop lengths). Strobes are localized, never a full-screen
+// white flash. Check each render with tools/flash_check.py (WCAG-style screening, not a certified test).
 // All radial spokes/beams use Euclidean perpendicular distance so they run straight through the outer 120px edge band.
 // Each variant (u_seed 1..6) has a distinct industrial structure so no two variants look the same at a glance.
 
@@ -20,7 +21,7 @@ vec3 scene(vec2 uv) {
 
   vec3 orange = mix(vec3(1.0, 0.34, 0.01), vec3(1.0, 0.52, 0.03), clamp(u_hue, 0.0, 1.0));
   vec3 white  = vec3(1.0, 0.98, 0.95);
-  float strobe = 0.65 + 0.35 * step(0.15, cos(LA * Pn)); // crisp industrial stepped strobe, localized
+  float strobe = 0.30 + 0.70 * step(0.15, cos(LA * Pn)); // crisp industrial stepped strobe, localized
   vec3 col = vec3(0.0);
 
   if (mode == 1) {

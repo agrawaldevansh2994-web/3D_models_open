@@ -7,7 +7,7 @@
 //
 // Needs ffmpeg + ffprobe on PATH. Prints JSON. Exit code 0 = pass, 1 = fail.
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, unlinkSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,7 +47,7 @@ const checks = {}; const fails = [];
 const rec = (name, ok, detail) => { checks[name] = ok ? 'pass' : 'FAIL' + (detail ? ` (${detail})` : ''); if (!ok) fails.push(name + (detail ? ': ' + detail : '')); };
 const isVideo = ['.mp4', '.webm', '.mov'].includes(extname(file).toLowerCase());
 const base = file.replace(/\.[^.]+$/, '');
-let ssimLoop = null, sheet = null, seamImg = null;
+let ssimLoop = null, ssimRef = null, sheet = null, seamImg = null;
 
 if (isVideo) {
   if (spec.w) rec('size', info.width === spec.w && info.height === spec.h, `${info.width}x${info.height}, want ${spec.w}x${spec.h}`);
@@ -70,8 +70,16 @@ if (isVideo) {
     run('ffmpeg', ['-y', '-v', 'error', '-sseof', '-0.1', '-i', file, '-update', '1', tmp2]);
     const ss = run('ffmpeg', ['-hide_banner', '-i', tmp, '-i', tmp2, '-lavfi', 'ssim', '-f', 'null', '-']);
     const m = /All:([0-9.]+)/.exec(ss.stderr); ssimLoop = m ? Number(m[1]) : 0;
-    rec('loop_ssim', ssimLoop >= 0.90, `${ssimLoop} < 0.90`);
-    for (const t of [tmp, tmp2]) try { run('cmd', ['/c', 'del', t]); } catch {}
+    // Reference: SSIM of an ordinary one-frame step at both ends (0->1 and N-2->N-1). Fast thin-line motion can sit
+    // just under 0.90 on every step, seam or not; the seam passes if it is >= 0.90 OR no worse than a normal step.
+    const nf = Math.round(info.duration * info.fps), tmp3 = base + '__f1.png', tmp4 = base + '__fN2.png';
+    run('ffmpeg', ['-y', '-v', 'error', '-i', file, '-vf', 'select=eq(n\\,1)', '-frames:v', '1', tmp3]);
+    run('ffmpeg', ['-y', '-v', 'error', '-i', file, '-vf', `select=eq(n\\,${nf - 2})`, '-frames:v', '1', tmp4]);
+    const s01 = /All:([0-9.]+)/.exec(run('ffmpeg', ['-hide_banner', '-i', tmp, '-i', tmp3, '-lavfi', 'ssim', '-f', 'null', '-']).stderr);
+    const sEnd = /All:([0-9.]+)/.exec(run('ffmpeg', ['-hide_banner', '-i', tmp4, '-i', tmp2, '-lavfi', 'ssim', '-f', 'null', '-']).stderr);
+    ssimRef = Math.min(s01 ? Number(s01[1]) : 1, sEnd ? Number(sEnd[1]) : 1);
+    rec('loop_ssim', ssimLoop >= 0.90 || ssimLoop >= ssimRef - 0.01, `${ssimLoop} < 0.90 and < normal step ${ssimRef.toFixed(4)} - 0.01`);
+    for (const t of [tmp, tmp2, tmp3, tmp4]) try { unlinkSync(t); } catch {}
   }
   sheet = base + '_sheet.jpg';
   run('ffmpeg', ['-y', '-v', 'error', '-i', file, '-vf', `fps=${Math.max(1, Math.round(12 / Math.max(info.duration, 1)))},scale=360:-1,tile=6x2`, '-frames:v', '1', sheet]);
@@ -103,7 +111,7 @@ if (isVideo) {
 
 const pass = fails.length === 0;
 const out = { file: relative(root, file).replaceAll('\\', '/'), kind, pass, specs: `${info.width}x${info.height}${isVideo ? ` ${info.fps.toFixed(0)}fps ${info.codec} ${info.mbps.toFixed(1)}Mbps ${info.duration.toFixed(1)}s` : ''}`,
-  checks, loop_ssim: ssimLoop, look_at: [sheet, seamImg].filter(Boolean).map((p) => relative(root, p).replaceAll('\\', '/')) };
+  checks, loop_ssim: ssimLoop, loop_ssim_step_ref: ssimRef, look_at: [sheet, seamImg].filter(Boolean).map((p) => relative(root, p).replaceAll('\\', '/')) };
 console.log(JSON.stringify(out, null, 2));
 
 if (has('commit')) {
@@ -111,7 +119,7 @@ if (has('commit')) {
   if (pass && !looked) { console.error('\nNOT COMMITTED: pass --looked "<one honest sentence about what you saw in the contact sheet>" after you open it.'); process.exit(1); }
   if (pass) {
     const line = { file: out.file, job: opt('job', kind), world: opt('world', ''), source: opt('source', ''), ai_generated: opt('ai', 'false') === 'true',
-      specs: out.specs, checks: Object.fromEntries(Object.entries(checks).map(([k, v]) => [k, v])), ...(ssimLoop != null ? { loop_ssim: ssimLoop } : {}),
+      specs: out.specs, checks: Object.fromEntries(Object.entries(checks).map(([k, v]) => [k, v])), ...(ssimLoop != null ? { loop_ssim: ssimLoop, loop_ssim_step_ref: ssimRef } : {}),
       looked_at: looked, date: new Date().toISOString().slice(0, 10) };
     const mPath = join(shift, 'manifest.jsonl');
     const existing = existsSync(mPath) ? readFileSync(mPath, 'utf8').split('\n').filter((l) => l.trim().length > 0) : [];

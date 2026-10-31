@@ -1,6 +1,6 @@
 // Goa '95 UV blacklight mandala (Goa Trance).
 // Fluorescent UV palette (magenta, acid green, UV orange, deep violet) on pitch black.
-// Slow breathing mandala with crisp fine concentric ring detail, 100% seamless mirror fold across +-PI for all integer S.
+// Slow breathing mandala with fine concentric ring detail. Mirror fold per sector, so no visible atan seam for integer S.
 // Each variant (u_seed 1..6) has a distinct geometric mandala architecture so no two variants read the same at a glance.
 
 vec3 uvGoaPal(float t, float shift) {
@@ -46,8 +46,8 @@ vec3 scene(vec2 uv) {
     float bindu = smoothstep(0.018, 0.003, length(vec2(r - 0.72, (normA - 0.5) * 0.22)));
     float fil1 = smoothstep(0.035, 0.003, trap1) * smoothstep(1.25, 0.35, r);
     float fil2 = smoothstep(0.025, 0.002, trap2) * smoothstep(1.15, 0.25, r);
-    col += uvGoaPal(0.15 + r * 0.4, u_hue) * (lotus * 1.5 + fil1 * 1.1);
-    col += uvGoaPal(0.62 - r * 0.3, u_hue) * (fineRings * 1.15 + fil2 * 0.95);
+    col += uvGoaPal(0.15 + r * 0.9, u_hue) * (lotus * 1.5 + fil1 * 1.1);   // wider radial sweep: rings pass through all 4 UV colours
+    col += uvGoaPal(0.62 - r * 0.8, u_hue) * (fineRings * 1.15 + fil2 * 0.95);
     col += uvGoaPal(0.40, u_hue) * bindu * 1.8;
     col *= smoothstep(1.45, 0.90, r);
   } else if (mode == 2) {
@@ -74,10 +74,10 @@ vec3 scene(vec2 uv) {
     float s3 = smoothstep(0.014, 0.002, wave3) + 0.35 * exp(-wave3 / 0.025);
     // Fine radial tick marks in concentric tracks
     float ticks = smoothstep(0.35, 0.1, abs(fract(normA * 6.0) - 0.5)) * smoothstep(0.015, 0.002, abs(fract(r * 9.0 - u_loop) - 0.5) * 0.11);
-    col += uvGoaPal(0.18, u_hue) * s1 * 1.3;
-    col += uvGoaPal(0.55, u_hue) * s2 * 1.3;
-    col += uvGoaPal(0.82, u_hue) * s3 * 1.25;
-    col += uvGoaPal(0.38 + r * 0.2, u_hue) * ticks * 1.4;
+    col += uvGoaPal(0.18, u_hue) * s1 * 1.9;   // brighter: this variant read dim in preview
+    col += uvGoaPal(0.55, u_hue) * s2 * 1.9;
+    col += uvGoaPal(0.82, u_hue) * s3 * 1.8;
+    col += uvGoaPal(0.38 + r * 0.2, u_hue) * ticks * 1.9;
     col *= smoothstep(1.28, 0.85, r);
   } else if (mode == 4) {
     // Variant 4 (goa_04_mandala_12): 12-fold Ringed Astrolabe Wheel with separated black channels & fine gear lace

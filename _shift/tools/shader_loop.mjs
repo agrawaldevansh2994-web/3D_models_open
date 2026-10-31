@@ -37,7 +37,7 @@ const preludeLines = prelude.split('\n').length;
 const glArgs = (flag('gl', 'angle') === 'swiftshader')
   ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
   : ['--use-gl=angle', '--use-angle=d3d11', '--disable-gpu-watchdog'];
-const browser = await chromium.launch({
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined,
   headless: true,
   args: ['--ignore-gpu-blocklist', '--enable-webgl', '--disable-gpu-watchdog', '--js-flags=--max-old-space-size=4096', ...glArgs]
 });

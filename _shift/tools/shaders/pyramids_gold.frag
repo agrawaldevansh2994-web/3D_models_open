@@ -75,7 +75,7 @@ vec3 scene(vec2 uv) {
   int mode = int(floor(u_seed + 0.5));
 
   // Deep midnight blue-black ground + burnished 24k gold palette
-  vec3 bgBlue = vec3(0.008, 0.022, 0.068) * (1.1 - 0.35 * length(uv * vec2(0.6, 0.9)));
+  vec3 bgBlue = vec3(0.0025, 0.0065, 0.022) * (1.1 - 0.35 * length(uv * vec2(0.6, 0.9)));
   vec3 gold   = mix(vec3(1.0, 0.76, 0.18), vec3(1.0, 0.56, 0.10), clamp(u_hue, 0.0, 1.0));
   vec3 hiGold = vec3(1.0, 0.94, 0.72);
   vec3 col = bgBlue;

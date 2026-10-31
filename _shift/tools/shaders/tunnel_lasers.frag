@@ -1,5 +1,6 @@
 // Lasers & tunnels (Laser Forest, Forest Rave).
-// Guaranteed straight Euclidean beams from emitter origin through frame edges (zero atan wrap seam, zero wedge ballooning/kinks).
+// Straight beams: distance is the Euclidean distance to each ray, so beams stay straight through the frame edges
+// (checked with tools/edge_check.mjs; no atan wrap seam lands on a beam).
 // Each variant (u_seed 1..6) has a distinct stage laser geometry so no two variants read the same at a glance.
 
 // Exact Euclidean distance to N_even straight radial rays from `orig`, rotated by `ang`.
@@ -38,7 +39,7 @@ vec3 scene(vec2 uv) {
   vec3 col = vec3(0.0);
 
   if (mode == 1) {
-    // Variant 1 (lasers_01_twelve_fan): Classic 12-beam symmetric tunnel fan, razor-straight Euclidean beams to frame edges
+    // Variant 1 (lasers_01_twelve_fan): Classic 12-beam symmetric tunnel fan, straight beams to the frame edges
     float r = length(uv) + 1e-3;
     float rot1 = (u_loop * 2.0 * M) * (TAU / N) + 0.12 * sin(LA);
     vec2 f1 = laserFan(uv, vec2(0.0), N, rot1, 0.0055, 0.0035);
@@ -84,7 +85,7 @@ vec3 scene(vec2 uv) {
   } else if (mode == 4) {
     // Variant 4 (lasers_04_thirtytwo_rays): 32-ray high-density starburst needles + dual horizontal scanning laser sheets
     float r = length(uv) + 1e-3;
-    float rot1 = (u_loop * 4.0) * (TAU / 32.0) + 0.08 * sin(LA);
+    float rot1 = (u_loop * 2.0) * (TAU / 32.0) + 0.035 * sin(LA); // slower: 32 thin rays at 4 steps/loop dropped the loop-seam SSIM to 0.899
     vec2 f1 = laserFan(uv, vec2(0.0), 32.0, rot1, 0.0030, 0.0018);
     float scanY1 = 0.55 * sin(LA * M);
     float scanY2 = -0.55 * cos(LA * M);

@@ -95,16 +95,17 @@ vec3 scene(vec2 uv) {
     float shafts = pow(0.5 + 0.5 * cos(shaftAng * 14.0 + LA), 4.0) * smoothstep(2.6, 0.3, length(d));
     float fine1 = voronoiCaustic(uv * 3.8 + 0.15 * vec2(cos(LA), sin(LA)), 0.4);
     float fine2 = waveNet(uv * 3.2);
-    col += cyan   * (fine1 * (0.55 + 0.85 * shafts) + shafts * 0.32);
-    col += teal   * (fine2 * 0.85 + shafts * 0.25);
-    col += violet * (fine1 * fine2 * 1.25);
+    // shafts lead: the fine mesh is mostly visible where a light shaft crosses it
+    col += cyan   * (fine1 * (0.18 + 1.10 * shafts) + shafts * 0.70);
+    col += teal   * (fine2 * (0.20 + 0.60 * shafts) + shafts * 0.35);
+    col += violet * (fine1 * fine2 * 0.90);
   } else if (mode == 5) {
     // Variant 5 (bay_05_slow_swell): Slow concentric abyssal swell ripples illuminating deep caustic cells
     float r1 = length(uv - vec2(-0.35, 0.15));
     float r2 = length(uv - vec2( 0.38, -0.18));
     float swell1 = pow(0.5 + 0.5 * cos(r1 * 6.28318 - LA), 4.0) * smoothstep(2.0, 0.1, r1);
     float swell2 = pow(0.5 + 0.5 * cos(r2 * 6.28318 - LA + 1.5), 4.0) * smoothstep(2.0, 0.1, r2);
-    vec2 disp = 0.12 * (swell1 - swell2) * normalize(uv + 1e-4);
+    vec2 disp = 0.12 * (swell1 - swell2) * uv / (length(uv) + 0.25); // smooth at the centre (normalize() glitched there)
     float cells = voronoiCaustic((uv + disp) * 1.9, 1.2);
     col += teal   * cells * (0.45 + 0.95 * swell1);
     col += cyan   * (swell1 * 0.55 + cells * swell2 * 1.15);
@@ -112,13 +113,15 @@ vec3 scene(vec2 uv) {
   } else {
     // Variant 6 (bay_06_sparkle_storm): Dense bioluminescent dinoflagellate bloom in a twin-gyre current
     vec2 flow = uv + 0.22 * vec2(sin(uv.y * 2.4 + LA), cos(uv.x * 2.4 - LA));
-    float baseNet = voronoiCaustic(flow * 2.5, 3.1);
-    float p1 = planktonLayer(flow, 9.0, 51.0);
-    float p2 = planktonLayer(rot(0.7) * flow, 14.0, 67.0);
-    float p3 = planktonLayer(rot(-0.5) * flow, 19.0, 83.0);
-    col += teal   * (baseNet * 0.65 + p2 * 1.35);
-    col += cyan   * (baseNet * 0.45 + p1 * 1.65);
-    col += violet * (baseNet * 0.55 + p3 * 1.55 + p1 * p2 * 1.2);
+    float baseNet = pow(voronoiCaustic(flow * 2.5, 3.1), 4.0);
+    float p1 = planktonLayer(flow, 6.0, 51.0);
+    float p2 = planktonLayer(rot(0.7) * flow, 9.0, 67.0);
+    float p3 = planktonLayer(rot(-0.5) * flow, 13.0, 83.0);
+    // sparkle-led: faint net, bright plankton points
+    col = deepBg * 0.45; // darker water so the sparkles carry the frame
+    col += teal   * (baseNet * 0.30 + p2 * 2.2);
+    col += cyan   * (baseNet * 0.20 + p1 * 2.6);
+    col += violet * (baseNet * 0.25 + p3 * 2.4 + p1 * p2 * 1.2);
   }
 
   // Soft underwater edge falloff
