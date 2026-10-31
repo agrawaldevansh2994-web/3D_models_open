@@ -128,7 +128,7 @@ vec3 scene(vec2 uv) {
     float nCells = max(6.0, ringIdx * 6.0);
     float dir = mod(ringIdx, 2.0) * 2.0 - 1.0;
     float seg = TAU / nCells;
-    vec2 qp = rot(-dir * (u_loop * 2.0) * seg) * uv;
+    vec2 qp = rot(-dir * u_loop * TAU) * uv; // one full turn per loop, so the hashed glyph cells line up at the seam
     float a = atan(qp.y, qp.x);
     float cellA = mod(floor(a / seg), nCells);
     float af = fract(a / seg);
@@ -165,7 +165,7 @@ vec3 scene(vec2 uv) {
     // Variant 5 (pyr_05_slow_temple): Receding 3D square temple portal frames with glyph-carved stone lintels
     vec2 b = abs(uv) / vec2(1.45, 1.0);
     float boxR = max(b.x, b.y) + 1e-3;
-    float z = 0.65 / (boxR + 0.08) - u_loop * 2.0;
+    float z = 0.65 / (boxR + 0.08) - u_loop * 4.0; // multiple of the 4-tier cycle
     float tierId = mod(floor(z), 4.0);
     float fz = fract(z);
     float portalRim = smoothstep(0.05, 0.01, abs(fz - 0.08)) + smoothstep(0.05, 0.01, abs(fz - 0.92));
@@ -176,7 +176,7 @@ vec3 scene(vec2 uv) {
     float h = hash21(vec2(gIdx, tierId) + 53.0);
     float d = glyph(q, h);
     float stroke = smoothstep(0.085, 0.03, d) * smoothstep(0.08, 0.22, boxR);
-    float pulse = 0.5 + 0.5 * cos(LA * Pn - z * 1.8);
+    float pulse = 0.5 + 0.5 * cos(LA * Pn - z * 1.5707963); // z shift 4 -> 2pi
     col += gold * (stroke * (0.55 + 1.1 * pulse) + portalRim * 0.85 * smoothstep(0.06, 0.18, boxR));
     col += hiGold * portalRim * pulse * 0.55 * smoothstep(0.06, 0.18, boxR);
   } else {
@@ -195,7 +195,7 @@ vec3 scene(vec2 uv) {
     float r = length(uv);
     float wave = pow(0.5 + 0.5 * cos(r * 7.5 - LA * Pn), 8.0);
     col += gold * (stroke * (0.45 + 1.65 * wave) + hexFrame * (0.28 + 0.65 * wave));
-    col += hiGold * (stroke * wave * 0.95 + exp(-abs(r - fract(u_loop * Pn) * 1.6) * 14.0) * 0.55);
+    col += hiGold * (stroke * wave * 0.95 + exp(-abs(r - fract(u_loop * Pn) * 2.2) * 14.0) * 0.55 * sin(3.14159265 * fract(u_loop * Pn)));  // ring fades in/out, no pop
   }
 
   return col;

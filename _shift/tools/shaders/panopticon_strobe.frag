@@ -86,7 +86,7 @@ vec3 scene(vec2 uv) {
     float rails = smoothstep(0.012, 0.002, diagD) * smoothstep(0.03, 0.12, boxR);
     // Horizontal & vertical axis struts
     float crossStrut = (smoothstep(0.007, 0.001, abs(uv.x)) + smoothstep(0.007, 0.001, abs(uv.y))) * smoothstep(0.05, 0.18, boxR);
-    float tierPulse = step(0.1, cos(LA * Pn - cellId * 0.85));
+    float tierPulse = step(0.1, cos(LA * Pn - cellId * 2.0943951)); // cellId shifts by 3K per loop -> whole turns
     col += orange * (frameO * (0.6 + 0.8 * tierPulse) + rails * 0.9);
     col += white  * (frameW * tierPulse * 1.4 + rails * 0.55 + crossStrut * 0.75 * strobe);
   } else if (mode == 5) {
