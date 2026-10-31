@@ -1,1 +1,0 @@
-loop_ssim: 0.639456 < 0.90 and < normal step 0.9506 - 0.01
