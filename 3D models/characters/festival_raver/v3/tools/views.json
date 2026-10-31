@@ -1,0 +1,45 @@
+{
+ "front": {
+  "path": "../front.png",
+  "crop": null,
+  "s": 388.2732558139535,
+  "ox": 373.5,
+  "oy": 717
+ },
+ "back": {
+  "path": "/workspace/work/m3d/3D models/characters/festival_raver/concept/turnaround_sheet.png",
+  "crop": [
+   900,
+   0,
+   1376,
+   768
+  ],
+  "s": 396.86337209302326,
+  "ox": 234.0,
+  "oy": 735
+ },
+ "side": {
+  "path": "/workspace/work/m3d/3D models/characters/festival_raver/concept/turnaround_sheet.png",
+  "crop": [
+   560,
+   0,
+   900,
+   768
+  ],
+  "s": 398.58139534883725,
+  "ox": 144.46499962566787,
+  "oy": 737
+ },
+ "side_head": {
+  "path": "/workspace/work/m3d/3D models/characters/festival_raver/concept/turnaround_sheet.png",
+  "crop": [
+   560,
+   0,
+   900,
+   768
+  ],
+  "s": 398.58139534883725,
+  "ox": 138.46499962566787,
+  "oy": 737.0
+ }
+}

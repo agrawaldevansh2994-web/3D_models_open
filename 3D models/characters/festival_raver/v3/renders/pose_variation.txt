@@ -1,0 +1,25 @@
+Per-clip rotation range = max angle (deg) between any frame and the clip mean pose, per bone
+
+idle (75 frames, 2.50s) src=Idle_Loop
+  hips travel range (m): [0.008 0.009 0.002]  bones >2deg: 9 / 52  major bones all >2deg: False
+  Hips:1  Spine:0  Spine1:1  Spine2:2  Neck:1  Head:2  LeftArm:3  LeftForeArm:3  LeftHand:0  RightArm:2  RightForeArm:2  RightHand:0  LeftUpLeg:3  LeftLeg:4  LeftFoot:2  RightUpLeg:3  RightLeg:5  RightFoot:3
+
+walk (40 frames, 1.33s) src=Walk_Loop
+  hips travel range (m): [0.071 0.045 0.   ]  bones >2deg: 20 / 52  major bones all >2deg: False
+  Hips:3  Spine:0  Spine1:2  Spine2:5  Neck:3  Head:4  LeftArm:19  LeftForeArm:17  LeftHand:11  RightArm:19  RightForeArm:18  RightHand:11  LeftUpLeg:33  LeftLeg:46  LeftFoot:32  RightUpLeg:37  RightLeg:49  RightFoot:26
+
+dance_bounce (30 frames, 1.00s) src=Dance_Loop
+  hips travel range (m): [0.144 0.056 0.05 ]  bones >2deg: 19 / 52  major bones all >2deg: False
+  Hips:23  Spine:0  Spine1:16  Spine2:4  Neck:4  Head:15  LeftArm:21  LeftForeArm:16  LeftHand:9  RightArm:21  RightForeArm:10  RightHand:16  LeftUpLeg:20  LeftLeg:33  LeftFoot:24  RightUpLeg:33  RightLeg:31  RightFoot:21
+
+dance_house (240 frames, 8.00s) src=AIST++ gHO_sFM_cAll_d21_mHO5_ch20 start 166 (30fps)
+  hips travel range (m): [0.271 0.223 0.372]  bones >2deg: 18 / 52  major bones all >2deg: False
+  Hips:78  Spine:31  Spine1:12  Spine2:15  Neck:27  Head:24  LeftArm:43  LeftForeArm:93  LeftHand:1  RightArm:53  RightForeArm:92  RightHand:0  LeftUpLeg:52  LeftLeg:64  LeftFoot:8  RightUpLeg:52  RightLeg:81  RightFoot:3
+
+dance_hiphop (240 frames, 8.00s) src=AIST++ gMH_sFM_cAll_d23_mMH3_ch11 start 6 (30fps)
+  hips travel range (m): [0.166 0.156 0.294]  bones >2deg: 18 / 52  major bones all >2deg: False
+  Hips:27  Spine:24  Spine1:8  Spine2:14  Neck:17  Head:20  LeftArm:69  LeftForeArm:116  LeftHand:1  RightArm:66  RightForeArm:128  RightHand:0  LeftUpLeg:41  LeftLeg:93  LeftFoot:13  RightUpLeg:50  RightLeg:101  RightFoot:11
+
+dj (225 frames, 7.50s) src=procedural 128 BPM, 16 beats, drop at beat 8
+  hips travel range (m): [0.028 0.051 0.   ]  bones >2deg: 30 / 52  major bones all >2deg: False
+  Hips:5  Spine:1  Spine1:3  Spine2:3  Neck:5  Head:11  LeftArm:12  LeftForeArm:20  LeftHand:11  RightArm:151  RightForeArm:115  RightHand:173  LeftUpLeg:11  LeftLeg:22  LeftFoot:13  RightUpLeg:11  RightLeg:22  RightFoot:13

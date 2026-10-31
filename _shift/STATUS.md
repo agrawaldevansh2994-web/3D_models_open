@@ -52,3 +52,9 @@ Per instructions, shaders were untouched.
 - 100% headless.
 - Remained strictly inside `C:\Users\agraw\Downloads\backups\Gemini\`.
 - Shift 2 VJ loop batch committed and pushed to `3D_models_open.git` on user command.
+
+## 2026-10-31 Hark final pass
+- Fixed the seam bugs in pan_04, pyr_03, pyr_05 and pyr_06 (shaders in 262c8e1), then re-rendered all four.
+- Restored goa_01, pan_03 and pan_05 from _rejected/. They were seamless and were false rejects.
+- Added lasers_05 and lasers_06, plus the festival_raver v3 character.
+- All 30 loops in vj_loops/ pass the frame-diff seam check. _rejected/ is now empty.
